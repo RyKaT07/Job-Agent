@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Literal
 from urllib.parse import quote_plus
 
-from pydantic import model_validator
+from pydantic import BaseModel, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Repo-root .env, resolved from this file so it loads regardless of CWD
@@ -21,6 +21,14 @@ class AIEndpoint:
     api_key: str
     model: str
     send_dimensions: bool = False  # OpenAI text-embedding-3-* only (Matryoshka)
+
+
+class ExternalScraperConfig(BaseModel):
+    """One self-hosted external scraper behind the universal /scrape contract."""
+
+    name: str
+    url: str
+    is_scraped: bool = True
 
 
 class Settings(BaseSettings):
@@ -119,6 +127,11 @@ class Settings(BaseSettings):
     APIFY_INDEED_ACTOR: str = "misceres~indeed-scraper"
     APIFY_BASE_URL: str = "https://api.apify.com/v2"
     APIFY_TIMEOUT: float = 120.0
+
+    # Pluggable external scrapers, each a service exposing POST {url}/scrape. Configure
+    # as JSON: EXTERNAL_SCRAPERS='[{"name":"pracuj","url":"http://host:8080"}]'
+    EXTERNAL_SCRAPERS: list[ExternalScraperConfig] = []
+    EXTERNAL_SCRAPER_TIMEOUT: float = 120.0
 
     # Email — Postmark
     POSTMARK_API_TOKEN: str | None = None
