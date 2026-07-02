@@ -134,21 +134,13 @@ export type JobRow = Job & {
   explanation?: string
 }
 
-export function mergeJobsWithSearch(
-  jobs: Job[],
-  search: SearchDetail | null,
-): JobRow[] {
-  if (!search) return jobs
-
-  const scoreByJobId = new Map(
-    search.results.map((result) => [
-      result.job.id,
-      { score: result.score, explanation: result.explanation },
-    ]),
-  )
-
-  return jobs.map((job) => {
-    const match = scoreByJobId.get(job.id)
-    return match ? { ...job, ...match } : job
-  })
+export function searchResultsToRows(search: SearchDetail): JobRow[] {
+  return search.results
+    .slice()
+    .sort((a, b) => a.rank - b.rank)
+    .map((result) => ({
+      ...result.job,
+      score: result.score,
+      explanation: result.explanation,
+    }))
 }

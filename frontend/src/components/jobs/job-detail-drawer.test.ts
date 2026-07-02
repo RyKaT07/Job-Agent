@@ -1,38 +1,33 @@
 import { describe, expect, it } from "vitest"
 
-import { mergeJobsWithSearch } from "@/components/jobs/job-detail-drawer"
+import { searchResultsToRows } from "@/components/jobs/job-detail-drawer"
 import type { Job } from "@/lib/api/jobs"
 import type { SearchDetail } from "@/lib/api/searches"
 
-describe("mergeJobsWithSearch", () => {
-  const jobs: Job[] = [
-    {
-      id: "job-1",
-      title: "Engineer",
-      company: "Acme",
-      location: "Berlin",
-      url: "https://example.com/1",
-    },
-  ]
+describe("searchResultsToRows", () => {
+  const job = (id: string): Job => ({
+    id,
+    title: "Engineer",
+    company: "Acme",
+    location: "Berlin",
+    url: `https://example.com/${id}`,
+  })
 
-  it("attaches score and explanation from search results", () => {
+  it("returns rows sorted by rank, carrying score and explanation", () => {
     const search: SearchDetail = {
       id: "search-1",
       prompt: "python",
       created_at: "2026-06-01T00:00:00Z",
       results: [
-        {
-          job: jobs[0],
-          rank: 1,
-          score: 0.91,
-          explanation: "Strong Python match",
-        },
+        { job: job("b"), rank: 2, score: 0.7, explanation: "second" },
+        { job: job("a"), rank: 1, score: 0.91, explanation: "first" },
       ],
     }
 
-    const merged = mergeJobsWithSearch(jobs, search)
+    const rows = searchResultsToRows(search)
 
-    expect(merged[0].score).toBe(0.91)
-    expect(merged[0].explanation).toBe("Strong Python match")
+    expect(rows.map((r) => r.id)).toEqual(["a", "b"]) // sorted by rank
+    expect(rows[0].score).toBe(0.91)
+    expect(rows[0].explanation).toBe("first")
   })
 })

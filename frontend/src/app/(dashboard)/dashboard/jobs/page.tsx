@@ -6,7 +6,7 @@ import { Briefcase, Search } from "lucide-react"
 
 import {
   JobDetailDrawer,
-  mergeJobsWithSearch,
+  searchResultsToRows,
   type JobRow,
 } from "@/components/jobs/job-detail-drawer"
 import { Button } from "@/components/ui/button"
@@ -35,14 +35,7 @@ async function fetchJobsPageData(): Promise<
   | { ok: true; jobs: JobRow[]; search: SearchDetail | null }
   | { ok: false; message: string }
 > {
-  const [jobsRes, searchesRes] = await Promise.all([
-    listJobs({ limit: 100 }),
-    listSearches({ limit: 1 }),
-  ])
-
-  if (!jobsRes.ok) {
-    return { ok: false, message: jobsRes.error.message }
-  }
+  const searchesRes = await listSearches({ limit: 1 })
 
   let latestSearch: SearchDetail | null = null
   if (searchesRes.ok && searchesRes.data.length > 0) {
@@ -52,11 +45,21 @@ async function fetchJobsPageData(): Promise<
     }
   }
 
-  return {
-    ok: true,
-    jobs: mergeJobsWithSearch(jobsRes.data, latestSearch),
-    search: latestSearch,
+  // With a search, show its ranked matches (score + explanation). Without one,
+  // fall back to browsing the most recent corpus jobs.
+  if (latestSearch) {
+    return {
+      ok: true,
+      jobs: searchResultsToRows(latestSearch),
+      search: latestSearch,
+    }
   }
+
+  const jobsRes = await listJobs({ limit: 100 })
+  if (!jobsRes.ok) {
+    return { ok: false, message: jobsRes.error.message }
+  }
+  return { ok: true, jobs: jobsRes.data, search: null }
 }
 
 export default function JobsPage() {
@@ -242,9 +245,11 @@ export default function JobsPage() {
       <Card className="border-border">
         <CardHeader className="flex flex-col gap-4 border-b border-border pb-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <CardTitle className="text-base">All jobs</CardTitle>
+            <CardTitle className="text-base">
+              {search ? "Matches" : "All jobs"}
+            </CardTitle>
             <CardDescription>
-              {filteredJobs.length} listings
+              {filteredJobs.length} {search ? "matches" : "listings"}
               {search ? ` from “${search.prompt}”` : ""}.
             </CardDescription>
           </div>
